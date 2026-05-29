@@ -32,11 +32,11 @@ def _read_labels(labels_filepath):
     return labels
 
 
-def load_mnist(data_dir="data"):
-    train_images_path = f"{data_dir}/train-images.idx3-ubyte"
-    train_labels_path = f"{data_dir}/train-labels.idx1-ubyte"
-    test_images_path = f"{data_dir}/t10k-images.idx3-ubyte"
-    test_labels_path = f"{data_dir}/t10k-labels.idx1-ubyte"
+def load_data(data_dir="data", dataset="mnist"):
+    train_images_path = f"{data_dir}/{dataset}/train-images.idx3-ubyte"
+    train_labels_path = f"{data_dir}/{dataset}/train-labels.idx1-ubyte"
+    test_images_path = f"{data_dir}/{dataset}/t10k-images.idx3-ubyte"
+    test_labels_path = f"{data_dir}/{dataset}/t10k-labels.idx1-ubyte"
 
     X_train = _read_images(train_images_path)
     y_train = _read_labels(train_labels_path)
@@ -57,24 +57,30 @@ def train_val_split(X, y, val_size=10000, seed=42):
     return (X[:, train_idx], y[train_idx]), (X[:, val_idx], y[val_idx])
 
 
-def plot_image(X, y, y_pred=None):
-    img = X.reshape(28, 28)
+def plot_image(X, y, y_pred=None, class_names=None):
+    plt.figure(figsize=(8, 6))
 
+    img = np.asarray(X).reshape(28, 28)
     plt.imshow(img, cmap="gray")
 
+    true_label = class_names[y] if class_names else y
+
     if y_pred is None:
-        title = f"Label: {y}"
+        title = f"Label: {true_label}"
     else:
+        pred_label = class_names[y_pred] if class_names else y_pred
         status = "correct" if y_pred == y else "wrong"
-        title = f"Label: {y} | Predicted: {y_pred} ({status})"
+
+        title = f"Label: {true_label} | Predicted: {pred_label} ({status})"
 
     plt.title(title)
     plt.axis("off")
+
     plt.show()
+    plt.close()
 
 
 def plot_roc_curve(model, X, y, filename=None):
-    # Probabilities
     scores = model.forward(X).T
     num_classes = scores.shape[1]
 
@@ -84,9 +90,7 @@ def plot_roc_curve(model, X, y, filename=None):
 
     for c in range(num_classes):
         fpr, tpr, _ = roc_curve(y_bin[:, c], scores[:, c])
-
         roc_auc = auc(fpr, tpr)
-
         plt.plot(fpr, tpr, label=f"Classe {c} (AUC = {roc_auc:.3f})")
 
     plt.plot([0, 1], [0, 1], "k--", label="Aleatório")
@@ -95,7 +99,6 @@ def plot_roc_curve(model, X, y, filename=None):
     plt.ylabel("True Positive Rate")
 
     plt.title("Curvas ROC one-vs-rest")
-
     plt.legend()
     plt.grid(True)
 
@@ -103,3 +106,5 @@ def plot_roc_curve(model, X, y, filename=None):
         plt.savefig(filename, bbox_inches="tight")
     else:
         plt.show()
+
+    plt.close()
