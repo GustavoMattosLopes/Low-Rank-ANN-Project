@@ -121,9 +121,10 @@ class NeuralNetwork:
             print(f"epoch {epoch} - loss {loss:.4f}")
 
 
-    def SGD(self, X, y, epochs=20, batch_size=64):
+    def SGD(self, X, y, X_val=None, y_val=None, epochs=20, batch_size=64):
         num_instances = X.shape[1]
-
+        train_losses = []
+        val_losses = []
         for epoch in range(epochs):
             perm = self.rng.permutation(num_instances)
             X_epoch = X[:, perm]
@@ -141,7 +142,21 @@ class NeuralNetwork:
                 num_batches += 1
 
             loss /= num_batches
-            print(f"epoch {epoch} - loss {loss:.4f}")
+            train_losses.append(loss)
+            print(f"====================================")
+            print(f"Epoch {epoch+1}/{epochs}")
+            print(f"Train loss {loss:.4f}")
+
+            if X_val is not None and y_val is not None:
+                val_loss, val_acc = self.evaluate(X_val, y_val)
+                val_losses.append(val_loss)
+                print(f"Val loss {val_loss:.4f} accuracy {val_acc:.4f}")
+            else:
+                val_losses.append(np.nan)
+
+            print(f"====================================")
+            
+        return train_losses, val_losses
 
 
     def predict(self, X):
