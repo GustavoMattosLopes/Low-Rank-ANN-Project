@@ -42,6 +42,7 @@ class NeuralNetwork:
 
 
     def softmax(self, Z):
+        Z = Z - np.max(Z, axis=0, keepdims=True)
         exp = np.exp(Z)
         return exp / np.sum(exp, axis=0, keepdims=True)
 
@@ -70,7 +71,8 @@ class NeuralNetwork:
 
     def loss(self, scores, y):
         batch_size = y.shape[0]
-        return -np.mean(np.log(scores[y, np.arange(batch_size)]))
+        eps = 1e-9
+        return -np.mean(np.log(scores[y, np.arange(batch_size)] + eps))
 
 
     def backward(self, y):
@@ -115,13 +117,13 @@ class NeuralNetwork:
         return loss
     
 
-    def gradient_descent(self, X, y, epochs=20):
+    def gradient_descent(self, X, y, epochs=30):
         for epoch in range(epochs):
             loss = self.train_step(X, y)
             print(f"epoch {epoch} - loss {loss:.4f}")
 
 
-    def SGD(self, X, y, X_val=None, y_val=None, epochs=20, batch_size=64):
+    def SGD(self, X, y, X_val=None, y_val=None, epochs=30, batch_size=64):
         num_instances = X.shape[1]
         train_losses = []
         val_losses = []
@@ -143,6 +145,7 @@ class NeuralNetwork:
 
             loss /= num_batches
             train_losses.append(loss)
+
             print(f"====================================")
             print(f"Epoch {epoch+1}/{epochs}")
             print(f"Train loss {loss:.4f}")
@@ -174,6 +177,10 @@ class NeuralNetwork:
         loss = self.loss(scores, y)
         acc = self.accuracy(X, y)
         return loss, acc
+    
+
+    def num_parameters(self):
+        return sum(W.size for W in self.W)
 
 
     def save(self, path):

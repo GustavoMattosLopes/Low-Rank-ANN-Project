@@ -2,9 +2,13 @@ import numpy as np
 
 
 class LowRankDecorator:
-    def __init__(self, model, ranks=None, energy=0.9):
+    def __init__(self, model, ranks=None, energy=None, ratio=None):
         # Trained neural network
         self.model = model
+
+        strategies = [ranks is not None, energy is not None, ratio is not None]
+        if sum(strategies) != 1:
+            raise ValueError("Specify exactly one of: ranks, energy, ratio")
 
         # SVD of each weight matrix
         self.svd_layers = []
@@ -15,12 +19,15 @@ class LowRankDecorator:
         for l, W in enumerate(self.model.W):
             U, S, Vt = np.linalg.svd(W, full_matrices=False)
             self.svd_layers.append((U, S, Vt))
+            rank = np.count_nonzero(S > 1e-9)
 
             if ranks is not None:
-                k = min(ranks[l], np.count_nonzero(S > 1e-9))
-            else:
+                k = min(ranks[l], rank)
+            elif energy is not None:
                 energy_ratio = np.cumsum(S**2) / np.sum(S**2)
                 k = np.searchsorted(energy_ratio, energy) + 1  # rank starts at 1
+            elif ratio is not None:
+                k = max(1, int(np.ceil(ratio * rank)))
 
             self.ranks.append(k)
 
@@ -64,10 +71,9 @@ class LowRankDecorator:
 
 
     def compression_rates(self):
-        """
-        Returns compression statistics for each layer.
-        """
         stats = []
+        total_original = 0
+        total_compressed = 0
 
         for l, W in enumerate(self.model.W):
             n, m = W.shape
@@ -77,24 +83,28 @@ class LowRankDecorator:
             k = self.ranks[l]
 
             original = n * m
-            compressed = k * (n + m + 1)
+            compressed = k * (n + m)
+
+            total_original += original
+            total_compressed += compressed
 
             stats.append({
                 "layer": l,
                 "original_rank": rank,
                 "compressed_rank": k,
-                "rank_ratio": k / rank,
                 "original_params": original,
                 "compressed_params": compressed,
-                "params_ratio": compressed / original
             })
 
-        return stats
+        total_ratio = total_compressed / total_original
+
+        return {
+            "layers": stats,
+            "total_original_params": total_original,
+            "total_compressed_params": total_compressed,
+            "compression_ratio": total_ratio,
+        }
 
 
     def __getattr__(self, name):
-        """
-        Automatically delegates missing attributes
-        and methods to the original model.
-        """
         return getattr(self.model, name)

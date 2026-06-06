@@ -1,0 +1,6 @@
+sizes=[784, 512, 128, 10]
+params=468224
+Train loss: 0.3863 | Train acc: 0.8669
+Test loss:  0.4261 | Test acc:  0.8494
+Test f1-score:  0.8485
+Train f1-score: 0.8662
